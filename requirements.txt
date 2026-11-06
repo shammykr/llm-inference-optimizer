@@ -1,0 +1,9 @@
+# CPU / CUDA PyTorch: install the wheel for your platform first (see README).
+torch>=2.2
+transformers>=4.45
+numpy>=1.26
+psutil>=5.9
+onnx>=1.16
+onnxscript>=0.1
+# CPU ONNX Runtime. For CUDA / TensorRT, swap for onnxruntime-gpu (see Dockerfile, gpu target).
+onnxruntime>=1.18

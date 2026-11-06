@@ -1,0 +1,28 @@
+[project]
+name = "llm-inference-optimizer"
+version = "0.1.0"
+description = "Inference optimization toolkit for transformer models with quantization, KV-cache optimization, and TensorRT compilation"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Shammy Kumar" }]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["artifacts", "results"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["optimizers", "profiling", "benchmarks", "scripts"]
+disallow_untyped_defs = true
+no_implicit_optional = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["onnxruntime", "onnxruntime.*", "onnx", "onnx.*", "transformers", "transformers.*"]
+ignore_missing_imports = true
