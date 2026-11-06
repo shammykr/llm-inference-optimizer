@@ -1,0 +1,22 @@
+"""Fixed text used for prompts and perplexity, so every run sees the same tokens."""
+
+EVAL_TEXT = (
+    "Running a language model in production is mostly a question of moving numbers "
+    "through memory as quickly as possible. Each new token requires reading every "
+    "weight of the network once, which is why small batches are limited by memory "
+    "bandwidth rather than by arithmetic. Engineers therefore try to shrink the "
+    "weights, to avoid repeating work that was already done for earlier tokens, and "
+    "to hand the computation to libraries that fuse many small operations into a "
+    "few large ones. Quantization stores weights with fewer bits, so less data has "
+    "to travel from memory to the processor for every step. A key and value cache "
+    "keeps the attention state of the prompt, so the model only processes the "
+    "newest token instead of the whole sequence again. Graph compilers such as "
+    "TensorRT look at the entire network ahead of time, choose the fastest kernel "
+    "for each layer on the target hardware, and merge layers that can run together. "
+    "None of these techniques is free. Lower precision can change the predictions "
+    "of the model, caches consume memory that grows with the length of the "
+    "conversation, and compiled engines must be rebuilt whenever the model or the "
+    "hardware changes. Measuring speed, memory and accuracy side by side is the "
+    "only reliable way to decide which trade-off is worth making for a given "
+    "application."
+)
