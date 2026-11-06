@@ -1,0 +1,50 @@
+name: Benchmark (x86 CPU)
+
+# Runs the full benchmark on a GitHub-hosted x86-64 runner, where PyTorch INT8
+# uses the fbgemm/x86 kernels (AVX2/AVX-512). Results are uploaded as an artifact.
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: "Models to benchmark (space separated)"
+        default: "gpt2 gpt2-xl"
+      new_tokens:
+        description: "New tokens per generation"
+        default: "64"
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  HF_HUB_DISABLE_PROGRESS_BARS: "1"
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - name: Install dependencies
+        run: |
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install -r requirements.txt
+      - name: CPU info
+        run: |
+          lscpu | grep -E "Model name|^CPU\(s\)|Flags" | sed -E 's/(Flags:.{0,20}).*(avx512_vnni|avx512f|avx2).*/\1 ... \2 .../'
+          python -c "import torch; print(torch.__version__, torch.backends.quantized.supported_engines, torch.get_num_threads())"
+      - name: Free disk space for GPT-2 XL
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - name: Run benchmark
+        run: |
+          python -m benchmarks.run_benchmarks --models ${{ inputs.models }} \
+            --new-tokens ${{ inputs.new_tokens }} --repeats 3 \
+            --label "GitHub Actions ubuntu-latest (x86-64)" \
+            --out results/benchmark-x86-github-actions.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-x86
+          path: results/
