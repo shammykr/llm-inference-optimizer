@@ -27,6 +27,7 @@ from __future__ import annotations
 import contextlib
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any
 
 import torch
 import torch.nn.functional as F
@@ -132,15 +133,16 @@ class StaticKVGPT2:
         autocast: Callable[[], contextlib.AbstractContextManager[None]] | None = None,
     ) -> None:
         self.model = model
-        cfg = model.config  # type: ignore[union-attr]
-        self.transformer: nn.Module = model.transformer  # type: ignore[assignment]
-        self.lm_head: nn.Module = model.lm_head  # type: ignore[assignment]
+        hf: Any = model
+        cfg = hf.config
+        self.transformer: Any = hf.transformer
+        self.lm_head: Any = hf.lm_head
         self.num_heads: int = cfg.n_head
         self.embed_dim: int = cfg.n_embd
         self.head_dim = self.embed_dim // self.num_heads
         self.max_positions: int = cfg.n_positions
         self.autocast = autocast or contextlib.nullcontext
-        device = self.transformer.wte.weight.device  # type: ignore[union-attr]
+        device = self.transformer.wte.weight.device
         self.cache = KVCacheManager(
             num_layers=cfg.n_layer,
             num_heads=self.num_heads,
@@ -157,13 +159,13 @@ class StaticKVGPT2:
         b, t = input_ids.shape
         start = cache.length
         positions = torch.arange(start, start + t, device=input_ids.device)
-        hidden = tr.wte(input_ids) + tr.wpe(positions)  # type: ignore[operator]
+        hidden = tr.wte(input_ids) + tr.wpe(positions)
         # The prompt (T > 1, empty cache) needs a causal mask. A single new
         # token attends to the whole prefix, so it needs none.
         causal = t > 1 and start == 0
         if t > 1 and start > 0:
             raise ValueError("multi-token steps are only supported for the prompt")
-        for layer, block in enumerate(tr.h):  # type: ignore[arg-type]
+        for layer, block in enumerate(tr.h):
             attn = block.attn
             qkv = attn.c_attn(block.ln_1(hidden))
             q, k, v = qkv.split(self.embed_dim, dim=2)
@@ -178,7 +180,7 @@ class StaticKVGPT2:
             hidden = hidden + attn.c_proj(out)
             hidden = hidden + block.mlp(block.ln_2(hidden))
         cache.advance(t)
-        last = tr.ln_f(hidden[:, -1:, :])  # type: ignore[operator]
+        last = tr.ln_f(hidden[:, -1:, :])
         logits: torch.Tensor = self.lm_head(last)[:, -1, :]
         return logits
 
@@ -190,7 +192,7 @@ class StaticKVGPT2:
         if total > self.max_positions:
             raise ValueError(f"{total} tokens exceeds the model's {self.max_positions} positions")
         with self.autocast():
-            probe_dtype = self.transformer.wte(input_ids[:, :1]).dtype  # type: ignore[operator]
+            probe_dtype = self.transformer.wte(input_ids[:, :1]).dtype
             qkv_dtype = torch.float16 if torch.is_autocast_enabled() else probe_dtype
             self.cache.reset(b, total, dtype=qkv_dtype)
             out = torch.empty((b, total), dtype=input_ids.dtype, device=input_ids.device)

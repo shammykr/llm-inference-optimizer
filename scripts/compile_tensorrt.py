@@ -24,6 +24,7 @@ import argparse
 import json
 import time
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import torch
@@ -41,8 +42,8 @@ from optimizers.tensorrt import (
 PROMPT = "The key to fast language model inference is"
 
 
-def shapes_of(model: torch.nn.Module) -> StepShapes:
-    cfg = model.config  # type: ignore[union-attr]
+def shapes_of(model: Any) -> StepShapes:
+    cfg = model.config
     return StepShapes(cfg.n_layer, cfg.n_head, cfg.n_embd // cfg.n_head)
 
 

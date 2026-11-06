@@ -21,6 +21,7 @@ stays FP32, matching the PyTorch INT8 path.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import torch
 import torch.nn.functional as F
@@ -42,9 +43,10 @@ def _project(layer: nn.Module, x: torch.Tensor) -> torch.Tensor:
 class GPT2StepModule(nn.Module):
     def __init__(self, model: nn.Module) -> None:
         super().__init__()
-        cfg = model.config  # type: ignore[union-attr]
-        self.transformer: nn.Module = model.transformer  # type: ignore[assignment]
-        self.lm_head: nn.Module = model.lm_head  # type: ignore[assignment]
+        hf: Any = model
+        cfg = hf.config
+        self.transformer: Any = hf.transformer
+        self.lm_head: Any = hf.lm_head
         self.num_layers: int = cfg.n_layer
         self.num_heads: int = cfg.n_head
         self.embed_dim: int = cfg.n_embd
@@ -57,12 +59,12 @@ class GPT2StepModule(nn.Module):
         b, t = input_ids.shape
         p = past_key.shape[3]
         positions = torch.arange(t, device=input_ids.device) + p
-        hidden = tr.wte(input_ids) + tr.wpe(positions)  # type: ignore[operator]
+        hidden = tr.wte(input_ids) + tr.wpe(positions)
         # Query i (absolute position p + i) may attend to keys 0 .. p + i.
         key_positions = torch.arange(p + t, device=input_ids.device)
         mask = key_positions[None, :] <= positions[:, None]  # (T, P + T)
         keys_out, values_out = [], []
-        for layer, block in enumerate(tr.h):  # type: ignore[arg-type]
+        for layer, block in enumerate(tr.h):
             qkv = _project(block.attn.c_attn, block.ln_1(hidden))
             q, k, v = qkv.split(self.embed_dim, dim=2)
             q = q.view(b, t, self.num_heads, self.head_dim).transpose(1, 2)
@@ -77,7 +79,7 @@ class GPT2StepModule(nn.Module):
             hidden = hidden + _project(block.attn.c_proj, out)
             mlp = block.mlp
             hidden = hidden + _project(mlp.c_proj, mlp.act(_project(mlp.c_fc, block.ln_2(hidden))))
-        last = tr.ln_f(hidden[:, -1, :])  # type: ignore[operator]
+        last = tr.ln_f(hidden[:, -1, :])
         logits: torch.Tensor = self.lm_head(last)
         return logits, torch.stack(keys_out), torch.stack(values_out)
 

@@ -5,9 +5,10 @@ from __future__ import annotations
 import os
 import warnings
 from dataclasses import dataclass
+from typing import Any
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedModel
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # Short names used by the benchmark. Parameter counts are from the model cards.
 MODEL_ALIASES: dict[str, str] = {
@@ -21,8 +22,8 @@ MODEL_ALIASES: dict[str, str] = {
 @dataclass
 class LoadedModel:
     name: str
-    model: PreTrainedModel
-    tokenizer: object
+    model: Any  # transformers PreTrainedModel (GPT2LMHeadModel)
+    tokenizer: Any
     num_parameters: int
 
 
@@ -46,7 +47,7 @@ def load_model(name: str, device: torch.device | str = "cpu") -> LoadedModel:
     quiet_hf()
     repo = MODEL_ALIASES.get(name, name)
     tokenizer = AutoTokenizer.from_pretrained(repo)
-    model = AutoModelForCausalLM.from_pretrained(repo, dtype=torch.float32)
+    model: Any = AutoModelForCausalLM.from_pretrained(repo, dtype=torch.float32)
     model = model.to(device).eval()
     if model.config.pad_token_id is None:
         model.config.pad_token_id = model.config.eos_token_id

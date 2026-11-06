@@ -25,6 +25,7 @@ import math
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, ParamSpec, TypeVar
 
 import numpy as np
 import torch
@@ -33,6 +34,9 @@ import torch.nn.functional as F
 from optimizers.kv_cache import StaticKVGPT2
 from optimizers.models import LoadedModel, model_size_mb
 from optimizers.quantization import count_quantized_linears, fp16_autocast, quantize_int8_dynamic
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 STRATEGIES: tuple[str, ...] = (
     "fp32",
@@ -64,10 +68,10 @@ class Runner:
     info: dict[str, object] = field(default_factory=dict)
 
 
-def _hf_generate(model: torch.nn.Module, use_cache: bool = True) -> Callable[..., torch.Tensor]:
+def _hf_generate(model: Any, use_cache: bool = True) -> Callable[[torch.Tensor, int], torch.Tensor]:
     def generate(ids: torch.Tensor, n: int) -> torch.Tensor:
         with torch.inference_mode():
-            out: torch.Tensor = model.generate(  # type: ignore[operator]
+            out: torch.Tensor = model.generate(
                 ids,
                 attention_mask=torch.ones_like(ids),
                 max_new_tokens=n,
@@ -80,21 +84,19 @@ def _hf_generate(model: torch.nn.Module, use_cache: bool = True) -> Callable[...
     return generate
 
 
-def _torch_nll(model: torch.nn.Module) -> Callable[[torch.Tensor], float]:
+def _torch_nll(model: Any) -> Callable[[torch.Tensor], float]:
     def nll(ids: torch.Tensor) -> float:
         with torch.inference_mode():
-            logits = model(ids).logits.float()  # type: ignore[operator]
+            logits = model(ids).logits.float()
         return float(F.cross_entropy(logits[0, :-1], ids[0, 1:]))
 
     return nll
 
 
-def _with_autocast(
-    fn: Callable[..., torch.Tensor | float], device: torch.device
-) -> Callable[..., torch.Tensor | float]:
-    def wrapped(*args: object) -> torch.Tensor | float:
+def _with_autocast(fn: Callable[P, R], device: torch.device) -> Callable[P, R]:
+    def wrapped(*args: P.args, **kwargs: P.kwargs) -> R:
         with fp16_autocast(device):
-            return fn(*args)
+            return fn(*args, **kwargs)
 
     return wrapped
 
@@ -145,7 +147,7 @@ def build_runner(
             dev,
             gen,
             nll,
-            model_size_mb(model),  # type: ignore[arg-type]
+            model_size_mb(model),
             "pytorch+autocast",
             info={"autocast_dtype": "float16"},
         )
@@ -200,7 +202,7 @@ def _ort_runner(
             quantize_onnx_int8(fp32_path, path)
     weights_mb = sum(f.stat().st_size for f in path.parent.iterdir() if f.is_file()) / 2**20
     # The PyTorch model is only needed for export; free it before benchmarking.
-    lm.model = None  # type: ignore[assignment]
+    lm.model = None
     session = build_session(path, shapes, prefer=prefer, threads=threads)
     gen = OrtGenerator(session, shapes)
 

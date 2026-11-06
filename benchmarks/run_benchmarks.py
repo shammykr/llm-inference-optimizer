@@ -33,6 +33,9 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import contextlib
+import ctypes
+import gc
 import json
 import math
 import os
@@ -55,6 +58,18 @@ from profiling.profiler import Profiler, allocation_profile, device_summary
 RESULT_MARKER = "@@RESULT@@"
 
 
+def release_freed_memory() -> None:
+    """Return memory freed during setup (e.g. FP32 weights replaced by INT8) to the OS.
+
+    Otherwise the allocator keeps it, and peak RSS would include weights the
+    strategy no longer uses.
+    """
+    gc.collect()
+    if sys.platform.startswith("linux"):
+        with contextlib.suppress(OSError, AttributeError):
+            ctypes.CDLL("libc.so.6").malloc_trim(0)
+
+
 def prompt_ids(tokenizer: Any, prompt_tokens: int, batch: int) -> torch.Tensor:
     ids = tokenizer(EVAL_TEXT, return_tensors="pt").input_ids[:, :prompt_tokens]
     return ids.repeat(batch, 1)
@@ -74,6 +89,7 @@ def run_worker(args: argparse.Namespace) -> dict[str, Any]:
     except StrategyUnavailable as exc:
         return {**row, "status": "skipped", "reason": str(exc)}
     row["setup_s"] = round(time.perf_counter() - t0, 1)
+    release_freed_memory()
     ids = prompt_ids(tokenizer, args.prompt_tokens, args.batch_size).to(device)
     eval_ids = tokenizer(EVAL_TEXT, return_tensors="pt").input_ids[:, : args.eval_tokens].to(device)
     n = args.new_tokens
