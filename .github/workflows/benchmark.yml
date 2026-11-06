@@ -11,6 +11,9 @@ on:
       new_tokens:
         description: "New tokens per generation"
         default: "64"
+      skip:
+        description: "model:strategy pairs to skip (the runner has 16 GB RAM)"
+        default: "gpt2-xl:fp16-autocast gpt2-xl:onnxruntime-int8"
 
 env:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
@@ -40,7 +43,7 @@ jobs:
       - name: Run benchmark
         run: |
           python -m benchmarks.run_benchmarks --models ${{ inputs.models }} \
-            --new-tokens ${{ inputs.new_tokens }} --repeats 3 \
+            --new-tokens ${{ inputs.new_tokens }} --repeats 3 --skip ${{ inputs.skip }} \
             --label "GitHub Actions ubuntu-latest (x86-64)" \
             --out results/benchmark-x86-github-actions.json
       - uses: actions/upload-artifact@v4

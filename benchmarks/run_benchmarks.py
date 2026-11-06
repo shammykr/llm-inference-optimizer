@@ -135,6 +135,11 @@ def run_worker(args: argparse.Namespace) -> dict[str, Any]:
     return row
 
 
+def save(report: dict[str, Any], path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(report, indent=2) + "\n")
+
+
 def run_pair(model: str, strategy: str, args: argparse.Namespace) -> dict[str, Any]:
     cmd = [
         sys.executable, "-m", "benchmarks.run_benchmarks", "--worker",
@@ -237,6 +242,8 @@ def main() -> None:
             start = time.perf_counter()
             row = run_pair(model, strategy, args)
             rows.append(row)
+            report["results"][model] = rows
+            save(report, args.out)  # keep partial results if a later pair crashes
             took = time.perf_counter() - start
             if row.get("status") == "ok":
                 print(
@@ -249,9 +256,7 @@ def main() -> None:
                 print(f"{model:>10} {strategy:<24} {row['status']}: {row.get('reason')}",
                       flush=True)  # fmt: skip
         add_comparisons(rows)
-        report["results"][model] = rows
-        args.out.parent.mkdir(parents=True, exist_ok=True)
-        args.out.write_text(json.dumps(report, indent=2) + "\n")  # save after every model
+        save(report, args.out)
 
     markdown = render(report)
     args.out.with_suffix(".md").write_text(markdown + "\n")
