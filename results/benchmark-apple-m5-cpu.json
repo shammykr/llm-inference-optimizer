@@ -584,20 +584,20 @@
         "model": "gpt2",
         "strategy": "onnxruntime",
         "num_parameters": 124439808,
-        "setup_s": 1.2,
+        "setup_s": 1.3,
         "status": "ok",
         "engine": "onnxruntime",
         "info": {
           "provider": "CPUExecutionProvider",
           "onnx": "artifacts/gpt2/model.onnx"
         },
-        "ms_per_token": 7.663,
-        "tokens_per_s": 130.49,
-        "prefill_ms": 8.53,
+        "ms_per_token": 8.216,
+        "tokens_per_s": 121.71,
+        "prefill_ms": 8.85,
         "generation_s_runs": [
-          0.4855,
-          0.4905,
-          0.4968
+          0.5259,
+          0.4852,
+          0.5291
         ],
         "weights_mb": 475.3,
         "generated_token_ids": [
@@ -666,31 +666,32 @@
           845,
           6942
         ],
-        "cpu_util_pct": 500.1,
-        "peak_rss_mb": 1192.7,
-        "rss_increase_mb": 14.6,
+        "cpu_util_pct": 390.1,
+        "peak_rss_mb": 1163.1,
+        "rss_increase_mb": 6.7,
         "perplexity": 58.86,
-        "speedup_vs_fp32": 1.138,
-        "token_agreement_vs_fp32": 1.0
+        "speedup_vs_fp32": 1.061,
+        "token_agreement_vs_fp32": 1.0,
+        "note": "rerun with ONNX Runtime limited to the same 4 threads as PyTorch"
       },
       {
         "model": "gpt2",
         "strategy": "onnxruntime-int8",
         "num_parameters": 124439808,
-        "setup_s": 1.0,
+        "setup_s": 1.3,
         "status": "ok",
         "engine": "onnxruntime",
         "info": {
           "provider": "CPUExecutionProvider",
           "onnx": "artifacts/gpt2/int8/model.int8.onnx"
         },
-        "ms_per_token": 2.763,
-        "tokens_per_s": 361.94,
-        "prefill_ms": 6.01,
+        "ms_per_token": 3.156,
+        "tokens_per_s": 316.87,
+        "prefill_ms": 5.74,
         "generation_s_runs": [
-          0.1879,
-          0.1741,
-          0.1768
+          0.202,
+          0.1843,
+          0.2074
         ],
         "weights_mb": 269.7,
         "generated_token_ids": [
@@ -759,12 +760,13 @@
           318,
           703
         ],
-        "cpu_util_pct": 500.8,
-        "peak_rss_mb": 896.9,
-        "rss_increase_mb": 16.8,
+        "cpu_util_pct": 390.9,
+        "peak_rss_mb": 781.4,
+        "rss_increase_mb": 18.2,
         "perplexity": 89.378,
-        "speedup_vs_fp32": 3.156,
-        "token_agreement_vs_fp32": 0.016
+        "speedup_vs_fp32": 2.763,
+        "token_agreement_vs_fp32": 0.016,
+        "note": "rerun with ONNX Runtime limited to the same 4 threads as PyTorch"
       },
       {
         "model": "gpt2",
@@ -772,6 +774,14 @@
         "num_parameters": 124439808,
         "status": "skipped",
         "reason": "TensorrtExecutionProvider not available (needs onnxruntime-gpu, TensorRT and an NVIDIA GPU)"
+      }
+    ],
+    "gpt2-xl": [
+      {
+        "model": "gpt2-xl",
+        "strategy": "all",
+        "status": "not run",
+        "reason": "the 6 GB model did not fit in free RAM on this 16 GB Mac alongside other apps (swapping); see the x86 results"
       }
     ]
   }
