@@ -203,7 +203,8 @@ def _ort_runner(
     weights_mb = sum(f.stat().st_size for f in path.parent.iterdir() if f.is_file()) / 2**20
     # The PyTorch model is only needed for export; free it before benchmarking.
     lm.model = None
-    session = build_session(path, shapes, prefer=prefer, threads=threads)
+    # Same CPU thread count as PyTorch, so engines are compared on equal hardware.
+    session = build_session(path, shapes, prefer=prefer, threads=threads or torch.get_num_threads())
     gen = OrtGenerator(session, shapes)
 
     def generate(ids: torch.Tensor, n: int) -> torch.Tensor:
